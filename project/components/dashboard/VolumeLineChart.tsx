@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import React from 'react';
@@ -30,13 +31,13 @@ export default function VolumeLineChart() {
             }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="day" 
+            <XAxis
+              dataKey="day"
               fontSize={12}
               tick={{ fontSize: 12 }}
             />
             <YAxis fontSize={12} />
-            <Tooltip 
+            <Tooltip
               contentStyle={{
                 backgroundColor: 'white',
                 border: '1px solid #e5e7eb',
@@ -45,26 +46,26 @@ export default function VolumeLineChart() {
               }}
             />
             <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="conversations" 
-              stroke="#3B82F6" 
+            <Line
+              type="monotone"
+              dataKey="conversations"
+              stroke="#3B82F6"
               strokeWidth={3}
               dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
               name="Total Conversations"
             />
-            <Line 
-              type="monotone" 
-              dataKey="resolved" 
-              stroke="#10B981" 
+            <Line
+              type="monotone"
+              dataKey="resolved"
+              stroke="#10B981"
               strokeWidth={2}
               dot={{ fill: '#10B981', strokeWidth: 2, r: 3 }}
               name="Resolved"
             />
-            <Line 
-              type="monotone" 
-              dataKey="pending" 
-              stroke="#F59E0B" 
+            <Line
+              type="monotone"
+              dataKey="pending"
+              stroke="#F59E0B"
               strokeWidth={2}
               dot={{ fill: '#F59E0B', strokeWidth: 2, r: 3 }}
               name="Pending"

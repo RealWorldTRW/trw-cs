@@ -144,7 +144,7 @@ export const getReportsStats = async () => {
       total,
       today: todayReports,
       week: weekReports,
-      categories: [...new Set(data.map((r: { category: string }) => r.category))].length,
+      categories: Array.from(new Set(data.map((r: { category: string }) => r.category))).length,
     },
     error: null,
   };
