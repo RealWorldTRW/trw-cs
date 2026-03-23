@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChartBar as BarChart3, Eye, EyeOff, Loader as Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { signIn, signUp, supabase } from '@/lib/supabase';
+import { signIn, signUp } from '@/lib/supabase';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -16,35 +16,35 @@ export default function SignIn() {
   const [isSignUp, setIsSignUp] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    if (!supabase) {
-      setError('Database connection not configured');
-      return;
-    }
-    
     setIsLoading(true);
     setError('');
 
     try {
-      const { data, error } = isSignUp 
+      const { data, error } = isSignUp
         ? await signUp(email, password)
         : await signIn(email, password);
-      
+
       if (error) {
         if (error.message === 'Invalid login credentials') {
           setError('Email or password is incorrect. Please check your credentials and try again.');
         } else {
           setError(error.message);
         }
-      } else if (data.user && !isSignUp) {
+        return;
+      }
+
+      if (!isSignUp && data?.user) {
         router.push('/');
-      } else if (isSignUp) {
+        return;
+      }
+
+      if (isSignUp) {
         setError('Account created successfully! Please check your email to verify your account.');
         setIsSignUp(false);
       }
-    } catch (err) {
+    } catch {
       setError(`An error occurred during ${isSignUp ? 'sign up' : 'sign in'}`);
     } finally {
       setIsLoading(false);
@@ -54,7 +54,6 @@ export default function SignIn() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -67,22 +66,20 @@ export default function SignIn() {
           </div>
         </div>
 
-        {/* Auth Card */}
         <Card className="shadow-lg border-0">
           <CardHeader className="space-y-1 pb-6">
             <CardTitle className="text-2xl font-semibold text-center text-gray-900">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </CardTitle>
             <p className="text-sm text-gray-600 text-center">
-              {isSignUp 
+              {isSignUp
                 ? 'Create an account to access the dashboard'
-                : 'Sign in to access your customer service reports'
-              }
+                : 'Sign in to access your customer service reports'}
             </p>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email
@@ -98,7 +95,6 @@ export default function SignIn() {
                 />
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Password
@@ -116,14 +112,10 @@ export default function SignIn() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {isSignUp && (
@@ -131,18 +123,18 @@ export default function SignIn() {
                 )}
               </div>
 
-              {/* Error Message */}
               {error && (
-                <div className={`p-3 text-sm border rounded-md ${
-                  error.includes('successfully') 
-                    ? 'text-green-600 bg-green-50 border-green-200'
-                    : 'text-red-600 bg-red-50 border-red-200'
-                }`}>
+                <div
+                  className={`p-3 text-sm border rounded-md ${
+                    error.includes('successfully')
+                      ? 'text-green-600 bg-green-50 border-green-200'
+                      : 'text-red-600 bg-red-50 border-red-200'
+                  }`}
+                >
                   {error}
                 </div>
               )}
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -153,25 +145,23 @@ export default function SignIn() {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {isSignUp ? 'Creating account...' : 'Signing in...'}
                   </>
+                ) : isSignUp ? (
+                  'Create Account'
                 ) : (
-                  isSignUp ? 'Create Account' : 'Sign In'
+                  'Sign In'
                 )}
               </Button>
 
-              {/* Toggle Sign Up/Sign In */}
               <div className="text-center">
                 <button
                   type="button"
                   onClick={() => {
-                    setIsSignUp(!isSignUp);
+                    setIsSignUp((prev) => !prev);
                     setError('');
                   }}
                   className="text-sm text-blue-600 hover:text-blue-700 underline"
                 >
-                  {isSignUp 
-                    ? 'Already have an account? Sign in'
-                    : "Don't have an account? Sign up"
-                  }
+                  {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                 </button>
               </div>
             </form>
