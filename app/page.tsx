@@ -138,33 +138,32 @@ export default function Dashboard() {
             <StatCards stats={stats} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            </div>
+
+            <ReportsTable reports={reports} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CategoryChart data={categoryData} />
-              <div className="bg-white rounded-lg p-6 shadow-sm border">
+              <div className="bg-white rounded-lg p-6 shadow-sm border border-border">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                    <div className="font-medium text-blue-900">Add New Report</div>
-                    <div className="text-sm text-blue-700">Create a new conversation report</div>
+                  <button className="w-full text-left p-3 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors">
+                    <div className="font-medium text-primary">Generate Weekly Report</div>
+                    <div className="text-sm text-primary/80">Download automated CSV and PDF</div>
                   </button>
-                  <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-                    <div className="font-medium text-green-900">Export Data</div>
-                    <div className="text-sm text-green-700">Download reports as CSV</div>
+                  <button className="w-full text-left p-3 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors">
+                    <div className="font-medium text-primary">Generate Monthly Report</div>
+                    <div className="text-sm text-primary/80">Download automated CSV and PDF</div>
                   </button>
-                  {profile?.rank === 'admin' && (
-                    <button className="w-full text-left p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
-                      <div className="font-medium text-red-900">Admin Panel</div>
-                      <div className="text-sm text-red-700">Manage users and system settings</div>
-                    </button>
-                  )}
-                  <button className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
-                    <div className="font-medium text-purple-900">View Analytics</div>
-                    <div className="text-sm text-purple-700">Detailed performance metrics</div>
+                  <button className="w-full text-left p-3 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors">
+                    <div className="font-medium text-primary">Generate Quarterly Report</div>
+                    <div className="text-sm text-primary/80">Download automated CSV and PDF</div>
                   </button>
                 </div>
               </div>
             </div>
 
-            <ReportsTable reports={reports} />
+
           </div>
         </main>
       </div>

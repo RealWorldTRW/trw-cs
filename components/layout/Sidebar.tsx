@@ -10,13 +10,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home, current: true },
-  { name: 'Reports', href: '/reports', icon: BarChart3, current: false },
-  { name: 'Conversations', href: '/conversations', icon: MessageSquare, current: false },
-  { name: 'Analytics', href: '/analytics', icon: TrendingUp, current: false },
-  { name: 'Users', href: '/users', icon: Users, current: false },
-  { name: 'Documents', href: '/documents', icon: FileText, current: false },
-  { name: 'Notifications', href: '/notifications', icon: Bell, current: false },
-  { name: 'Settings', href: '/settings', icon: Settings, current: false },
+  { name: 'Downloaded Reports', href: '/reports', icon: FileText, current: false },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
@@ -25,7 +19,7 @@ export default function Sidebar({ className }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold text-gray-900">TRW CS</span>
@@ -43,13 +37,13 @@ export default function Sidebar({ className }: SidebarProps) {
               className={cn(
                 "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200",
                 item.current
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                  ? "bg-primary/10 text-primary border-r-2 border-primary"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
               <Icon className={cn(
                 "w-5 h-5 mr-3",
-                item.current ? "text-blue-700" : "text-gray-400"
+                item.current ? "text-primary" : "text-gray-400"
               )} />
               {item.name}
             </a>
