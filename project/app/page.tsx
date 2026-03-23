@@ -7,33 +7,55 @@ import TopNav from '@/components/layout/TopNav';
 import StatCards from '@/components/dashboard/StatCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
 import ReportsTable from '@/components/dashboard/ReportsTable';
-import { getCurrentUser, getUserProfile, getConversationReports, getReportsByCategory, getReportsStats } from '@/lib/supabase';
+import {
+  getCurrentUser,
+  getUserProfile,
+  getConversationReports,
+  getReportsByCategory,
+  getReportsStats,
+} from '@/lib/supabase';
 import type { ConversationReport, Profile } from '@/lib/supabase';
 
+type DashboardStats = {
+  total: number;
+  today: number;
+  week: number;
+  categories: number;
+};
+
+type AuthUser = {
+  id: string;
+  email?: string | null;
+};
+
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [reports, setReports] = useState<ConversationReport[] | null>(null);
-  const [categoryData, setCategoryData] = useState<Record<string, number> | null>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [reports, setReports] = useState<ConversationReport[]>([]);
+  const [categoryData, setCategoryData] = useState<Record<string, number>>({});
+  const [stats, setStats] = useState<DashboardStats>({
+    total: 0,
+    today: 0,
+    week: 0,
+    categories: 0,
+  });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const checkAuth = async () => {
       const { user, error } = await getCurrentUser();
-      
+
       if (error || !user) {
         router.push('/sign-in');
         return;
       }
-      
-      setUser(user);
-      
-      // Get user profile
+
+      setUser({ id: user.id, email: user.email });
+
       const { data: profileData } = await getUserProfile(user.id);
-      setProfile(profileData);
-      
+      setProfile(profileData ?? null);
+
       await loadData();
     };
 
@@ -45,12 +67,19 @@ export default function Dashboard() {
       const [reportsResult, categoryResult, statsResult] = await Promise.all([
         getConversationReports(),
         getReportsByCategory(),
-        getReportsStats()
+        getReportsStats(),
       ]);
 
-      if (reportsResult.data) setReports(reportsResult.data);
-      if (categoryResult.data) setCategoryData(categoryResult.data);
-      if (statsResult.data) setStats(statsResult.data);
+      setReports(reportsResult.data ?? []);
+      setCategoryData(categoryResult.data ?? {});
+      setStats(
+        statsResult.data ?? {
+          total: 0,
+          today: 0,
+          week: 0,
+          categories: 0,
+        }
+      );
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -86,13 +115,12 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopNav title="TRW CS Reports" user={user} profile={profile} />
-        
+
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-full mx-auto space-y-6">
-            
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Customer Service Reports</h1>
@@ -106,9 +134,9 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            
+
             <StatCards stats={stats} />
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CategoryChart data={categoryData} />
               <div className="bg-white rounded-lg p-6 shadow-sm border">
@@ -135,7 +163,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
+
             <ReportsTable reports={reports} />
           </div>
         </main>
