@@ -24,6 +24,12 @@ export interface ConversationReport {
   category: string;
   summary: string | null;
   created_at: string | null;
+  resolution_status: string | null;
+  leaky_bucket_reason: string | null;
+  sentiment: string | null;
+  tags: any | null;
+  quick_insight: string | null;
+  conversation_history: any | null;
 }
 
 export interface Profile {

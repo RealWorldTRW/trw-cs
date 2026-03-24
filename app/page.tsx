@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import TopNav from '@/components/layout/TopNav';
 import StatCards from '@/components/dashboard/StatCards';
 import CategoryChart from '@/components/dashboard/CategoryChart';
+import SentimentChart from '@/components/dashboard/SentimentChart';
 import ReportsTable from '@/components/dashboard/ReportsTable';
 import {
   getCurrentUser,
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [reports, setReports] = useState<ConversationReport[]>([]);
   const [categoryData, setCategoryData] = useState<Record<string, number>>({});
+  const [sentimentData, setSentimentData] = useState<Record<string, number>>({});
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
     today: 0,
@@ -72,6 +74,14 @@ export default function Dashboard() {
 
       setReports(reportsResult.data ?? []);
       setCategoryData(categoryResult.data ?? {});
+
+      const sentiments = (reportsResult.data ?? []).reduce((acc: Record<string, number>, report) => {
+        const s = report.sentiment || 'neutral';
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+      }, {});
+      setSentimentData(sentiments);
+
       setStats(
         statsResult.data ?? {
           total: 0,
@@ -142,8 +152,16 @@ export default function Dashboard() {
 
             <ReportsTable reports={reports} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <CategoryChart data={categoryData} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="col-span-1 lg:col-span-2">
+                <CategoryChart data={categoryData} />
+              </div>
+              <div className="col-span-1">
+                <SentimentChart data={sentimentData} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
               <div className="bg-white rounded-lg p-6 shadow-sm border border-border">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
