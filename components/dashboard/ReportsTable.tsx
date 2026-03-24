@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, SlidersHorizontal, DownloadCloud, AlertCircle, MessageSquare } from 'lucide-react';
 import { ConversationReport } from '@/lib/supabase';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -96,23 +95,53 @@ export default function ReportsTable({ reports }: ReportsTableProps) {
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
 
-    autoTable(doc, {
-      head: [['ID', 'Category', 'Status', 'Sentiment', 'Summary', 'Created']],
-      body: filteredReports.map(r => [
-        r.id.substring(0, 8),
-        r.category,
-        r.resolution_status || 'N/A',
-        r.sentiment || 'N/A',
-        r.summary || 'N/A',
-        formatDate(r.created_at)
-      ]),
-      startY: 36,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-      columnStyles: { 4: { cellWidth: 50 } }
+    let yPos = 40;
+
+    const grouped = filteredReports.reduce((acc, report) => {
+      const cat = report.category || 'Undefined';
+      if (!acc[cat]) acc[cat] = [];
+      if (report.summary) acc[cat].push(report.summary);
+      return acc;
+    }, {} as Record<string, string[]>);
+
+    doc.setTextColor(0);
+
+    Object.entries(grouped).forEach(([category, summaries]) => {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.text(`${category}:`, 14, yPos);
+      yPos += 10;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+
+      if (summaries.length === 0) {
+        doc.text("No summaries available.", 14, yPos);
+        yPos += 10;
+      } else {
+        summaries.forEach(summary => {
+          const lines = doc.splitTextToSize(summary, 180);
+
+          if (yPos + (lines.length * 6) > 280) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          doc.text(lines, 14, yPos);
+          yPos += (lines.length * 6) + 6;
+        });
+      }
+
+      yPos += 4;
     });
 
-    doc.save('trw-reports.pdf');
+    doc.save('grouped-reports.pdf');
   };
 
   const selectedTags = parseJsonData(selectedReport?.tags);
@@ -330,8 +359,8 @@ export default function ReportsTable({ reports }: ReportsTableProps) {
                   return (
                     <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${isUser
-                          ? 'bg-primary text-white rounded-br-sm'
-                          : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
+                        ? 'bg-primary text-white rounded-br-sm'
+                        : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
                         }`}>
                         {msg.content}
                       </div>

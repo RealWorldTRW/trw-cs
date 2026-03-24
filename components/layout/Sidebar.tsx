@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ChartBar as BarChart3, Users, Settings, FileText, Bell, Chrome as Home, TrendingUp, MessageSquare } from 'lucide-react';
 
@@ -31,7 +32,7 @@ export default function Sidebar({ className }: SidebarProps) {
         {navigation.map((item) => {
           const Icon = item.icon;
           return (
-            <a
+            <Link
               key={item.name}
               href={item.href}
               className={cn(
@@ -46,7 +47,7 @@ export default function Sidebar({ className }: SidebarProps) {
                 item.current ? "text-primary" : "text-gray-400"
               )} />
               {item.name}
-            </a>
+            </Link>
           );
         })}
       </nav>

@@ -103,6 +103,14 @@ export const getConversationReports = async () => {
     .order('created_at', { ascending: false });
 };
 
+export const getConversationReportsByDate = async (startDate: string) => {
+  return await supabase
+    .from('conversation_reports')
+    .select('*')
+    .gte('created_at', startDate)
+    .order('created_at', { ascending: false });
+};
+
 export const getReportsByCategory = async () => {
   const { data, error } = await supabase
     .from('conversation_reports')
