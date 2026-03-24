@@ -110,6 +110,21 @@ export default function Dashboard() {
       const { data } = await getConversationReportsByDate(startDate);
       const reportData = data || [];
 
+      let aiInsights = "";
+      try {
+        const aiResponse = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reports: reportData, timeframeTitle: title })
+        });
+        if (aiResponse.ok) {
+          const aiJson = await aiResponse.json();
+          aiInsights = aiJson.analysis || "";
+        }
+      } catch (err) {
+        console.warn("Failed to fetch AI insights", err);
+      }
+
       const doc = new jsPDF();
       doc.setFontSize(24);
       doc.setTextColor(6, 78, 59); // emerald-900
@@ -178,6 +193,34 @@ export default function Dashboard() {
         doc.rect(14, yPos, barWidth, 6, 'F');
         yPos += 14;
       });
+
+      if (aiInsights && aiInsights.length > 0) {
+        doc.addPage();
+        yPos = 22;
+
+        doc.setFontSize(18);
+        doc.setTextColor(6, 78, 59);
+        doc.setFont("helvetica", "bold");
+        doc.text("AI Strategic Insights", 14, yPos);
+        yPos += 12;
+
+        const insightsLines = doc.splitTextToSize(aiInsights, 180);
+
+        insightsLines.forEach((line: string) => {
+          if (yPos > 280) { doc.addPage(); yPos = 20; }
+          if (line.trim().startsWith('###') || line.trim().startsWith('**')) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0);
+            yPos += 4;
+          } else {
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(50);
+          }
+
+          doc.text(line.replace(/### |\*\*/g, ''), 14, yPos);
+          yPos += 6;
+        });
+      }
 
       // RAW SUMMARIES (New Page)
       doc.addPage();
