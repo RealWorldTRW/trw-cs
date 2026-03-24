@@ -159,9 +159,46 @@ export default function Dashboard() {
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
+      doc.setTextColor(50);
       doc.text(`Total Ticket Volume: ${totalTickets}`, 14, yPos);
       yPos += 8;
-      doc.text(`Resolution Rate: ${resolutionRate}% Automatically Resolved by AI`, 14, yPos);
+
+      // RESOLUTION & SENTIMENT BARS
+      const escalatedCount = reportData.filter(r => r.resolution_status === 'escalated').length;
+      const unresolvedCount = totalTickets > 0 ? totalTickets - aiResolved - escalatedCount : 0;
+
+      const positiveCount = reportData.filter(r => r.sentiment === 'positive').length;
+      const negativeCount = reportData.filter(r => r.sentiment === 'negative').length;
+      const neutralCount = totalTickets > 0 ? totalTickets - positiveCount - negativeCount : 0;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Resolution Breakdown:", 14, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${aiResolved} AI Resolved | ${escalatedCount} Escalated | ${unresolvedCount} Unresolved`, 65, yPos);
+      yPos += 4;
+      if (totalTickets > 0) {
+        doc.setFillColor(16, 185, 129); // green
+        doc.rect(14, yPos, (aiResolved / totalTickets) * 180 || 1, 4, 'F');
+        doc.setFillColor(245, 158, 11); // amber
+        doc.rect(14 + ((aiResolved / totalTickets) * 180), yPos, (escalatedCount / totalTickets) * 180 || 1, 4, 'F');
+        doc.setFillColor(239, 68, 68); // red
+        doc.rect(14 + (((aiResolved + escalatedCount) / totalTickets) * 180), yPos, (unresolvedCount / totalTickets) * 180 || 1, 4, 'F');
+      }
+      yPos += 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("User Sentiment:", 14, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${positiveCount} Positive | ${neutralCount} Neutral | ${negativeCount} Negative`, 50, yPos);
+      yPos += 4;
+      if (totalTickets > 0) {
+        doc.setFillColor(16, 185, 129); // green
+        doc.rect(14, yPos, (positiveCount / totalTickets) * 180 || 1, 4, 'F');
+        doc.setFillColor(156, 163, 175); // gray
+        doc.rect(14 + ((positiveCount / totalTickets) * 180), yPos, (neutralCount / totalTickets) * 180 || 1, 4, 'F');
+        doc.setFillColor(239, 68, 68); // red
+        doc.rect(14 + (((positiveCount + neutralCount) / totalTickets) * 180), yPos, (negativeCount / totalTickets) * 180 || 1, 4, 'F');
+      }
       yPos += 16;
 
       // BUCKETS
@@ -208,17 +245,21 @@ export default function Dashboard() {
 
         insightsLines.forEach((line: string) => {
           if (yPos > 280) { doc.addPage(); yPos = 20; }
-          if (line.trim().startsWith('###') || line.trim().startsWith('**')) {
+          const trimmed = line.trim();
+
+          if (trimmed.startsWith('###') || trimmed.startsWith('**')) {
             doc.setFont("helvetica", "bold");
+            doc.setFontSize(13); // FIX HUGE FONT
             doc.setTextColor(0);
             yPos += 4;
           } else {
             doc.setFont("helvetica", "normal");
+            doc.setFontSize(11); // FIX HUGE FONT
             doc.setTextColor(50);
           }
 
-          doc.text(line.replace(/### |\*\*/g, ''), 14, yPos);
-          yPos += 6;
+          doc.text(trimmed.replace(/### |\*\*/g, ''), 14, yPos);
+          yPos += trimmed.startsWith('###') ? 8 : 6;
         });
       }
 

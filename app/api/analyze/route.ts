@@ -30,22 +30,26 @@ export async function POST(req: Request) {
         }));
 
         const prompt = `
-You are an expert Customer Success Analyst at a digital subscription company. You have been provided with the raw chat summaries and resolution statuses from our customer support tickets over the ${timeframeTitle}.
+You are an executive CS analyst. You have raw chat summaries from our tickets over the ${timeframeTitle}.
 
-Your job is to analyze this data and extract deep, actionable intelligence. We need to know where we are failing and where we can save users.
+Analyze this data and provide insights. 
+CRITICAL RULE: DO NOT WAFFLE. The reader has no time. Use ONLY extremely short bullet points (max 5-10 words per bullet). No paragraphs. No fluff.
 
-Provide your analysis in the following structured format (be concise, professional, and omit greetings/closings):
+Format:
 
-### 1. Primary Commonalities & Trends
-(Identify the most frequent issues, confusing systems, or trending questions across the top buckets.)
+### 1. Commonalities
+- [Short point 1]
+- [Short point 2]
 
-### 2. Root Causes for Cancellations & Refunds
-(Look specifically at the Cancel, Refund, Frustration, and Bug categories. What exactly is driving users to leave or ask for money back? Are there specific usability or billing problems?)
+### 2. Why Users Cancel/Refund
+- [Root cause 1]
+- [Root cause 2]
 
-### 3. "Where Can We Save Us?" (Actionable Recommendations)
-(Provide 3 highly specific, operational or product recommendations to reduce cancellation volume, fix bottlenecks, and immediately improve user retention based on this raw data.)
+### 3. Quick Wins (Save Us)
+- [Action 1]
+- [Action 2]
 
-Here is the JSON dataset of the recent ticket summaries:
+Raw Data:
 ${JSON.stringify(reportsForAnalysis)}
 `;
 
