@@ -111,38 +111,83 @@ export default function Dashboard() {
       const reportData = data || [];
 
       const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(0, 100, 0); // dark green
-      doc.text(title, 14, 22);
+      doc.setFontSize(24);
+      doc.setTextColor(6, 78, 59); // emerald-900
+      doc.setFont("helvetica", "bold");
+      doc.text(`Intelligence Report: ${title}`, 14, 22);
 
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Reports: ${reportData.length}`, 14, 30);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on: ${new Date().toLocaleDateString()} | Covering past ${days} days`, 14, 30);
+
+      const totalTickets = reportData.length;
+      let aiResolved = 0;
 
       const counts = reportData.reduce((acc, report) => {
         const cat = report.category || 'Undefined';
         acc[cat] = (acc[cat] || 0) + 1;
+        if (report.resolution_status === 'ai_resolved') aiResolved++;
         return acc;
       }, {} as Record<string, number>);
 
+      const resolutionRate = totalTickets > 0 ? Math.round((aiResolved / totalTickets) * 100) : 0;
+
       let yPos = 45;
 
+      // EXECUTIVE SUMMARY
       doc.setFontSize(16);
       doc.setTextColor(0);
       doc.setFont("helvetica", "bold");
-      doc.text("Category Breakdown", 14, yPos);
+      doc.text("Executive Summary", 14, yPos);
       yPos += 10;
 
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
-      (Object.entries(counts) as [string, number][]).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
-        if (yPos > 280) { doc.addPage(); yPos = 20; }
-        doc.text(`${cat}: ${count}`, 14, yPos);
-        yPos += 8;
+      doc.text(`Total Ticket Volume: ${totalTickets}`, 14, yPos);
+      yPos += 8;
+      doc.text(`Resolution Rate: ${resolutionRate}% Automatically Resolved by AI`, 14, yPos);
+      yPos += 16;
+
+      // BUCKETS
+      doc.setFontSize(16);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "bold");
+      doc.text("Category Buckets (Volume Layout)", 14, yPos);
+      yPos += 12;
+
+      const sortedCounts = (Object.entries(counts) as [string, number][]).sort((a, b) => b[1] - a[1]);
+      const maxCount = sortedCounts.length > 0 ? sortedCounts[0][1] : 1;
+
+      sortedCounts.forEach(([cat, count]) => {
+        if (yPos > 270) { doc.addPage(); yPos = 20; }
+
+        const percentage = totalTickets > 0 ? Math.round((count / totalTickets) * 100) : 0;
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(50);
+        doc.text(`${cat}  (${percentage}%)`, 14, yPos);
+
+        doc.setFont("helvetica", "normal");
+        doc.text(`${count} tickets`, 170, yPos);
+
+        yPos += 4;
+
+        const barWidth = (count / maxCount) * 180;
+        doc.setFillColor(16, 185, 129); // emerald-500
+        doc.rect(14, yPos, barWidth, 6, 'F');
+        yPos += 14;
       });
 
-      yPos += 10;
-      if (yPos > 260) { doc.addPage(); yPos = 20; }
+      // RAW SUMMARIES (New Page)
+      doc.addPage();
+      yPos = 22;
+
+      doc.setFontSize(18);
+      doc.setTextColor(6, 78, 59);
+      doc.setFont("helvetica", "bold");
+      doc.text("Detailed Context & Logs", 14, yPos);
+      yPos += 15;
 
       const grouped = reportData.reduce((acc, report) => {
         const cat = report.category || 'Undefined';
@@ -153,15 +198,17 @@ export default function Dashboard() {
 
       Object.entries(grouped as Record<string, string[]>).forEach(([category, summaries]: [string, string[]]) => {
         doc.setFontSize(14);
+        doc.setTextColor(0);
         doc.setFont("helvetica", "bold");
 
         if (yPos > 270) { doc.addPage(); yPos = 20; }
 
-        doc.text(`${category} Summaries:`, 14, yPos);
+        doc.text(`${category}:`, 14, yPos);
         yPos += 10;
 
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
+        doc.setTextColor(50);
 
         if (summaries.length === 0) {
           doc.text("No summaries to display.", 14, yPos);
@@ -169,9 +216,9 @@ export default function Dashboard() {
         } else {
           summaries.forEach(summary => {
             const lines = doc.splitTextToSize(`• ${summary}`, 180);
-            if (yPos + (lines.length * 6) > 280) { doc.addPage(); yPos = 20; }
+            if (yPos + (lines.length * 5) > 280) { doc.addPage(); yPos = 20; }
             doc.text(lines, 14, yPos);
-            yPos += (lines.length * 6) + 4;
+            yPos += (lines.length * 5) + 4;
           });
         }
         yPos += 6;
