@@ -103,12 +103,18 @@ export const getConversationReports = async () => {
     .order('created_at', { ascending: false });
 };
 
-export const getConversationReportsByDate = async (startDate: string) => {
-  return await supabase
+export const getConversationReportsByDate = async (startDate: string, endDate?: string) => {
+  let query = supabase
     .from('conversation_reports')
     .select('*')
-    .gte('created_at', startDate)
-    .order('created_at', { ascending: false });
+    .gte('created_at', startDate);
+
+  if (endDate) {
+    // Add 23:59:59 to include the whole end day
+    query = query.lte('created_at', endDate + 'T23:59:59.999Z');
+  }
+
+  return await query.order('created_at', { ascending: false });
 };
 
 export const getReportsByCategory = async () => {

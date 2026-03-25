@@ -45,6 +45,8 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -100,14 +102,25 @@ export default function Dashboard() {
     }
   };
 
-  const handleGenerateReport = async (days: number, title: string) => {
+  const handleGenerateReport = async (days: number | null, title: string) => {
     setGenerating(title);
     try {
-      const date = new Date();
-      date.setDate(date.getDate() - days);
-      const startDate = date.toISOString();
+      let startDateStr = '';
+      let endDateStr: string | undefined = undefined;
 
-      const { data } = await getConversationReportsByDate(startDate);
+      if (days !== null) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        startDateStr = date.toISOString();
+      } else {
+        // Custom dates
+        startDateStr = new Date(customStart).toISOString();
+        if (customEnd) {
+          endDateStr = customEnd; // Supabase func handles the T23:59:59 append
+        }
+      }
+
+      const { data } = await getConversationReportsByDate(startDateStr, endDateStr);
       const reportData = data || [];
 
       let aiInsights = "";
@@ -383,7 +396,35 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 gap-6">
               <div className="bg-white rounded-lg p-6 shadow-sm border border-border">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Custom Date Filter */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-col gap-3">
+                    <div className="text-sm font-semibold text-gray-700">Custom Date Range</div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="date"
+                        className="border border-gray-200 p-2 rounded text-sm w-full bg-white text-gray-800 focus:ring-primary focus:border-primary"
+                        value={customStart}
+                        onChange={e => setCustomStart(e.target.value)}
+                      />
+                      <input
+                        type="date"
+                        className="border border-gray-200 p-2 rounded text-sm w-full bg-white text-gray-800 focus:ring-primary focus:border-primary"
+                        value={customEnd}
+                        onChange={e => setCustomEnd(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleGenerateReport(null, `Custom Report (${customStart} to ${customEnd || 'Present'})`)}
+                      disabled={generating !== null || !customStart}
+                      className="w-full text-center p-2.5 mt-1 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generating === `Custom Report (${customStart} to ${customEnd || 'Present'})` ? 'Generating...' : 'Generate Custom Report'}
+                    </button>
+                  </div>
+
+                  <hr className="border-gray-100" />
+
                   <button
                     onClick={() => handleGenerateReport(7, 'Weekly Report')}
                     disabled={generating !== null}
