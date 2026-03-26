@@ -252,32 +252,50 @@ export default function Dashboard() {
 
       const dateArray = Object.entries(dateVolume).map(([date, data]) => ({ date, ...data }));
 
+      const topVolumeDays = [...dateArray].sort((a, b) => b.vol - a.vol).slice(0, 5);
+      const maxVol = topVolumeDays.length > 0 ? topVolumeDays[0].vol : 1;
+
       doc.setFontSize(14);
       doc.setTextColor(0);
       doc.text("Busiest Days (By Volume)", 14, yPos);
-      yPos += 8;
+      yPos += 10;
       doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(50);
-      const topVolumeDays = [...dateArray].sort((a, b) => b.vol - a.vol).slice(0, 5);
-      topVolumeDays.forEach((d, i) => {
-        doc.text(`${i + 1}. ${d.date} - ${d.vol} conversations`, 14, yPos);
-        yPos += 6;
+
+      topVolumeDays.forEach((d) => {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(50);
+        doc.text(`${d.date}`, 14, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${d.vol} threads`, 170, yPos);
+        yPos += 4;
+
+        doc.setFillColor(59, 130, 246); // blue
+        doc.rect(14, yPos, (d.vol / maxVol) * 180 || 1, 6, 'F');
+        yPos += 12;
       });
       yPos += 10;
+
+      const topEffortDays = [...dateArray].sort((a, b) => b.effort - a.effort).slice(0, 5);
+      const maxEffort = topEffortDays.length > 0 ? topEffortDays[0].effort : 1;
 
       doc.setFontSize(14);
       doc.setTextColor(0);
       doc.setFont("helvetica", "bold");
-      doc.text("Highest Effort Days (By Thread Size)", 14, yPos);
-      yPos += 8;
+      doc.text("Highest Effort Days (By Admin Replies)", 14, yPos);
+      yPos += 10;
       doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(50);
-      const topEffortDays = [...dateArray].sort((a, b) => b.effort - a.effort).slice(0, 5);
-      topEffortDays.forEach((d, i) => {
-        doc.text(`${i + 1}. ${d.date} - ${d.effort} total replies handled`, 14, yPos);
-        yPos += 6;
+
+      topEffortDays.forEach((d) => {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(50);
+        doc.text(`${d.date}`, 14, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${d.effort} parts`, 170, yPos);
+        yPos += 4;
+
+        doc.setFillColor(245, 158, 11); // amber
+        doc.rect(14, yPos, (d.effort / maxEffort) * 180 || 1, 6, 'F');
+        yPos += 12;
       });
 
       // === PAGE 3: RESOLUTION BREAKDOWN BY CATEGORY ===
@@ -290,6 +308,7 @@ export default function Dashboard() {
       yPos += 15;
 
       const topEscalations = Object.entries(categoryEscalations).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const maxEsc = topEscalations.length > 0 ? topEscalations[0][1] : 1;
 
       doc.setFontSize(12);
       doc.setTextColor(0);
@@ -297,60 +316,21 @@ export default function Dashboard() {
         doc.setFont("helvetica", "normal");
         doc.text("No escalations recorded in this period.", 14, yPos);
       } else {
-        topEscalations.forEach(([cat, count], i) => {
+        topEscalations.forEach(([cat, count]) => {
           doc.setFont("helvetica", "bold");
-          doc.text(`${i + 1}. ${cat}`, 14, yPos);
+          doc.setTextColor(50);
+          doc.text(`${cat}`, 14, yPos);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(220, 38, 38); // red
-          doc.text(`${count} escalations to human support`, 90, yPos);
+          doc.text(`${count} escalations`, 150, yPos);
+          yPos += 4;
+
+          doc.setFillColor(239, 68, 68); // red
+          doc.rect(14, yPos, (count / maxEsc) * 180 || 1, 6, 'F');
           doc.setTextColor(0);
-          yPos += 8;
+          yPos += 14;
         });
       }
-
-      // === PAGE 4: APPENDIX / LOGS ===
-      doc.addPage();
-      yPos = 22;
-      doc.setFontSize(18);
-      doc.setTextColor(6, 78, 59);
-      doc.setFont("helvetica", "bold");
-      doc.text("Appendix A: Detailed Context & Logs", 14, yPos);
-      yPos += 15;
-
-      const grouped = reportData.reduce((acc, report) => {
-        const cat = report.category || 'Undefined';
-        if (!acc[cat]) acc[cat] = [];
-        if (report.summary) acc[cat].push(report.summary);
-        return acc;
-      }, {} as Record<string, string[]>);
-
-      Object.entries(grouped as Record<string, string[]>).forEach(([category, summaries]: [string, string[]]) => {
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.setFont("helvetica", "bold");
-
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
-
-        doc.text(`${category}:`, 14, yPos);
-        yPos += 8;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(50);
-
-        if (summaries.length === 0) {
-          doc.text("No context logged.", 14, yPos);
-          yPos += 8;
-        } else {
-          summaries.forEach(summary => {
-            const lines = doc.splitTextToSize(`• ${summary}`, 180);
-            if (yPos + (lines.length * 4) > 280) { doc.addPage(); yPos = 20; }
-            doc.text(lines, 14, yPos);
-            yPos += (lines.length * 4) + 3;
-          });
-        }
-        yPos += 6;
-      });
 
       doc.save(`${title.replace(/\s+/g, '_').toLowerCase()}.pdf`);
     } catch (error) {
