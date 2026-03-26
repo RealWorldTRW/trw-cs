@@ -22,32 +22,43 @@ export async function POST(req: Request) {
             });
         }
 
-        const reportsForAnalysis = reports.map((r: any) => ({
+        // Intelligent Sampling: Prevent sending 5000+ records to OpenAI
+        // 1. Sort all reports by human effort (count_conversation_parts) descending
+        // 2. Prioritize escalations and threads with actual friction reasons
+        const sortedReports = [...reports].sort((a: any, b: any) =>
+            (b.count_conversation_parts || 0) - (a.count_conversation_parts || 0)
+        );
+
+        const escalations = sortedReports.filter(r => r.resolution_status === 'escalated_to_support');
+        const others = sortedReports.filter(r => r.resolution_status !== 'escalated_to_support');
+
+        // Take top 150 escalations, and top 50 other high-effort threads (Max 200 records total)
+        const sampledReports = [...escalations.slice(0, 150), ...others.slice(0, 50)];
+
+        const reportsForAnalysis = sampledReports.map((r: any) => ({
             category: r.category,
             status: r.resolution_status,
+            friction_reason: r.leaky_bucket_reason,
+            tags: r.tags,
+            effort_parts: r.count_conversation_parts,
             summary: r.summary,
-            insight: r.quick_insight || undefined,
         }));
 
         const prompt = `
-You are an executive CS analyst. You have raw chat summaries from our tickets over the ${timeframeTitle}.
+You are an executive CS operator. You have raw chat routing intelligence from our tickets over the ${timeframeTitle}.
 
-Analyze this data and provide insights. 
-CRITICAL RULE: DO NOT WAFFLE. The reader has no time. Use ONLY extremely short bullet points (max 5-10 words per bullet). No paragraphs. No fluff.
+Analyze this data. 
+CRITICAL RULE: DO NOT WAFFLE. The reader has no time. Use ONLY extremely short bullet points (max 5-10 words per bullet). No paragraphs. No fluff. Every recommendation must tie to a specific friction pattern found in the tags or friction_reason fields.
 
-Format:
+Format EXACTLY like this:
 
-### 1. Commonalities
-- [Short point 1]
-- [Short point 2]
+### 1. Top Friction Points
+- [Category A]: [Specific Root Cause finding]
+- [Category B]: [Specific Root Cause finding]
 
-### 2. Why Users Cancel/Refund
-- [Root cause 1]
-- [Root cause 2]
-
-### 3. Quick Wins (Save Us)
-- [Action 1]
-- [Action 2]
+### 2. What To Fix Next
+- [Actionable fix for Pattern 1]
+- [Actionable fix for Pattern 2]
 
 Raw Data:
 ${JSON.stringify(reportsForAnalysis)}

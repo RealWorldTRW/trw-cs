@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import TopNav from '@/components/layout/TopNav';
 import StatCards from '@/components/dashboard/StatCards';
-import CategoryChart from '@/components/dashboard/CategoryChart';
-import SentimentChart from '@/components/dashboard/SentimentChart';
+import EffortByDayChart from '@/components/dashboard/EffortByDayChart';
+import ResolutionPathChart from '@/components/dashboard/ResolutionPathChart';
+import EscalationDriversChart from '@/components/dashboard/EscalationDriversChart';
+import FrictionSignalsChart from '@/components/dashboard/FrictionSignalsChart';
 import ReportsTable from '@/components/dashboard/ReportsTable';
 import jsPDF from 'jspdf';
 import {
@@ -21,9 +23,8 @@ import type { ConversationReport, Profile } from '@/lib/supabase';
 
 type DashboardStats = {
   total: number;
-  today: number;
-  week: number;
-  categories: number;
+  effort: number;
+  escalations: number;
 };
 
 type AuthUser = {
@@ -39,9 +40,8 @@ export default function Dashboard() {
   const [sentimentData, setSentimentData] = useState<Record<string, number>>({});
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
-    today: 0,
-    week: 0,
-    categories: 0,
+    effort: 0,
+    escalations: 0,
   });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
@@ -90,9 +90,8 @@ export default function Dashboard() {
       setStats(
         statsResult.data ?? {
           total: 0,
-          today: 0,
-          week: 0,
-          categories: 0,
+          effort: 0,
+          escalations: 0,
         }
       );
     } catch (error) {
@@ -147,23 +146,46 @@ export default function Dashboard() {
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.setFont("helvetica", "normal");
-      doc.text(`Generated on: ${new Date().toLocaleDateString()} | Covering past ${days} days`, 14, 30);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()} | Covering past ${days || 'custom'} days`, 14, 30);
 
+      // --- CALCULATIONS ---
       const totalTickets = reportData.length;
+      let totalEffort = 0;
       let aiResolved = 0;
+      let escalatedCount = 0;
+      let openPending = 0;
+      let humanResolved = 0;
 
-      const counts = reportData.reduce((acc, report) => {
-        const cat = report.category || 'Undefined';
-        acc[cat] = (acc[cat] || 0) + 1;
-        if (report.resolution_status === 'ai_resolved') aiResolved++;
-        return acc;
-      }, {} as Record<string, number>);
+      const categoryEscalations: Record<string, number> = {};
+      const dateVolume: Record<string, { vol: number, effort: number }> = {};
 
-      const resolutionRate = totalTickets > 0 ? Math.round((aiResolved / totalTickets) * 100) : 0;
+      reportData.forEach(r => {
+        totalEffort += (r.count_conversation_parts || 0);
+
+        const cat = r.category || 'Undefined';
+        const status = r.resolution_status || 'unresolved';
+
+        if (status === 'ai_resolved') aiResolved++;
+        else if (status === 'escalated_to_support') {
+          escalatedCount++;
+          categoryEscalations[cat] = (categoryEscalations[cat] || 0) + 1;
+        }
+        else if (status === 'human_resolved') humanResolved++;
+        else openPending++;
+
+        if (r.conversation_created_at) {
+          const d = new Date(r.conversation_created_at).toLocaleDateString();
+          if (!dateVolume[d]) dateVolume[d] = { vol: 0, effort: 0 };
+          dateVolume[d].vol += 1;
+          dateVolume[d].effort += (r.count_conversation_parts || 0);
+        }
+      });
+
+      const escalationRate = totalTickets > 0 ? Math.round((escalatedCount / totalTickets) * 100) : 0;
 
       let yPos = 45;
 
-      // EXECUTIVE SUMMARY
+      // === PAGE 1: EXECUTIVE DASHBOARD ===
       doc.setFontSize(16);
       doc.setTextColor(0);
       doc.setFont("helvetica", "bold");
@@ -173,117 +195,126 @@ export default function Dashboard() {
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(50);
-      doc.text(`Total Ticket Volume: ${totalTickets}`, 14, yPos);
+      doc.text(`Total Conversations: ${totalTickets}`, 14, yPos);
+      doc.text(`Total Human Support Effort (Replies): ${totalEffort}`, 85, yPos);
       yPos += 8;
 
-      // RESOLUTION & SENTIMENT BARS
-      const escalatedCount = reportData.filter(r => r.resolution_status === 'escalated').length;
-      const unresolvedCount = totalTickets > 0 ? totalTickets - aiResolved - escalatedCount : 0;
+      doc.text(`Resolution Split:`, 14, yPos);
+      yPos += 6;
+      doc.setFontSize(10);
+      doc.text(`• AI Handled: ${aiResolved} (${totalTickets > 0 ? Math.round((aiResolved / totalTickets) * 100) : 0}%)`, 18, yPos); yPos += 5;
+      doc.text(`• Escalated to Human: ${escalatedCount} (${escalationRate}%)`, 18, yPos); yPos += 5;
+      doc.text(`• Human Resolved: ${humanResolved}`, 18, yPos); yPos += 5;
+      doc.text(`• Open / Pending: ${openPending}`, 18, yPos); yPos += 12;
 
-      const positiveCount = reportData.filter(r => r.sentiment === 'positive').length;
-      const negativeCount = reportData.filter(r => r.sentiment === 'negative').length;
-      const neutralCount = totalTickets > 0 ? totalTickets - positiveCount - negativeCount : 0;
-
+      // AI STRATEGIC INSIGHTS on PAGE 1
+      doc.setFontSize(16);
+      doc.setTextColor(6, 78, 59);
       doc.setFont("helvetica", "bold");
-      doc.text("Resolution Breakdown:", 14, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${aiResolved} AI Resolved | ${escalatedCount} Escalated | ${unresolvedCount} Unresolved`, 65, yPos);
-      yPos += 4;
-      if (totalTickets > 0) {
-        doc.setFillColor(16, 185, 129); // green
-        doc.rect(14, yPos, (aiResolved / totalTickets) * 180 || 1, 4, 'F');
-        doc.setFillColor(245, 158, 11); // amber
-        doc.rect(14 + ((aiResolved / totalTickets) * 180), yPos, (escalatedCount / totalTickets) * 180 || 1, 4, 'F');
-        doc.setFillColor(239, 68, 68); // red
-        doc.rect(14 + (((aiResolved + escalatedCount) / totalTickets) * 180), yPos, (unresolvedCount / totalTickets) * 180 || 1, 4, 'F');
-      }
+      doc.text("Operational Intelligence", 14, yPos);
       yPos += 10;
 
-      doc.setFont("helvetica", "bold");
-      doc.text("User Sentiment:", 14, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${positiveCount} Positive | ${neutralCount} Neutral | ${negativeCount} Negative`, 50, yPos);
-      yPos += 4;
-      if (totalTickets > 0) {
-        doc.setFillColor(16, 185, 129); // green
-        doc.rect(14, yPos, (positiveCount / totalTickets) * 180 || 1, 4, 'F');
-        doc.setFillColor(156, 163, 175); // gray
-        doc.rect(14 + ((positiveCount / totalTickets) * 180), yPos, (neutralCount / totalTickets) * 180 || 1, 4, 'F');
-        doc.setFillColor(239, 68, 68); // red
-        doc.rect(14 + (((positiveCount + neutralCount) / totalTickets) * 180), yPos, (negativeCount / totalTickets) * 180 || 1, 4, 'F');
-      }
-      yPos += 16;
-
-      // BUCKETS
-      doc.setFontSize(16);
-      doc.setTextColor(0);
-      doc.setFont("helvetica", "bold");
-      doc.text("Category Buckets (Volume Layout)", 14, yPos);
-      yPos += 12;
-
-      const sortedCounts = (Object.entries(counts) as [string, number][]).sort((a, b) => b[1] - a[1]);
-      const maxCount = sortedCounts.length > 0 ? sortedCounts[0][1] : 1;
-
-      sortedCounts.forEach(([cat, count]) => {
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
-
-        const percentage = totalTickets > 0 ? Math.round((count / totalTickets) * 100) : 0;
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(50);
-        doc.text(`${cat}  (${percentage}%)`, 14, yPos);
-
-        doc.setFont("helvetica", "normal");
-        doc.text(`${count} tickets`, 170, yPos);
-
-        yPos += 4;
-
-        const barWidth = (count / maxCount) * 180;
-        doc.setFillColor(16, 185, 129); // emerald-500
-        doc.rect(14, yPos, barWidth, 6, 'F');
-        yPos += 14;
-      });
-
       if (aiInsights && aiInsights.length > 0) {
-        doc.addPage();
-        yPos = 22;
-
-        doc.setFontSize(18);
-        doc.setTextColor(6, 78, 59);
-        doc.setFont("helvetica", "bold");
-        doc.text("AI Strategic Insights", 14, yPos);
-        yPos += 12;
-
         const insightsLines = doc.splitTextToSize(aiInsights, 180);
-
         insightsLines.forEach((line: string) => {
           if (yPos > 280) { doc.addPage(); yPos = 20; }
           const trimmed = line.trim();
 
           if (trimmed.startsWith('###') || trimmed.startsWith('**')) {
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(13); // FIX HUGE FONT
+            doc.setFontSize(13);
             doc.setTextColor(0);
             yPos += 4;
           } else {
             doc.setFont("helvetica", "normal");
-            doc.setFontSize(11); // FIX HUGE FONT
+            doc.setFontSize(11);
             doc.setTextColor(50);
           }
 
           doc.text(trimmed.replace(/### |\*\*/g, ''), 14, yPos);
           yPos += trimmed.startsWith('###') ? 8 : 6;
         });
+      } else {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(50);
+        doc.text("No AI insights generated for this period.", 14, yPos);
       }
 
-      // RAW SUMMARIES (New Page)
+      // === PAGE 2: TRAFFIC & EFFORT ANALYTICS ===
       doc.addPage();
       yPos = 22;
-
       doc.setFontSize(18);
       doc.setTextColor(6, 78, 59);
       doc.setFont("helvetica", "bold");
-      doc.text("Detailed Context & Logs", 14, yPos);
+      doc.text("Traffic & Effort Analytics", 14, yPos);
+      yPos += 15;
+
+      const dateArray = Object.entries(dateVolume).map(([date, data]) => ({ date, ...data }));
+
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text("Busiest Days (By Volume)", 14, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(50);
+      const topVolumeDays = [...dateArray].sort((a, b) => b.vol - a.vol).slice(0, 5);
+      topVolumeDays.forEach((d, i) => {
+        doc.text(`${i + 1}. ${d.date} - ${d.vol} conversations`, 14, yPos);
+        yPos += 6;
+      });
+      yPos += 10;
+
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "bold");
+      doc.text("Highest Effort Days (By Thread Size)", 14, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(50);
+      const topEffortDays = [...dateArray].sort((a, b) => b.effort - a.effort).slice(0, 5);
+      topEffortDays.forEach((d, i) => {
+        doc.text(`${i + 1}. ${d.date} - ${d.effort} total replies handled`, 14, yPos);
+        yPos += 6;
+      });
+
+      // === PAGE 3: RESOLUTION BREAKDOWN BY CATEGORY ===
+      doc.addPage();
+      yPos = 22;
+      doc.setFontSize(18);
+      doc.setTextColor(6, 78, 59);
+      doc.setFont("helvetica", "bold");
+      doc.text("Top Escalation Drivers", 14, yPos);
+      yPos += 15;
+
+      const topEscalations = Object.entries(categoryEscalations).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      if (topEscalations.length === 0) {
+        doc.setFont("helvetica", "normal");
+        doc.text("No escalations recorded in this period.", 14, yPos);
+      } else {
+        topEscalations.forEach(([cat, count], i) => {
+          doc.setFont("helvetica", "bold");
+          doc.text(`${i + 1}. ${cat}`, 14, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(220, 38, 38); // red
+          doc.text(`${count} escalations to human support`, 90, yPos);
+          doc.setTextColor(0);
+          yPos += 8;
+        });
+      }
+
+      // === PAGE 4: APPENDIX / LOGS ===
+      doc.addPage();
+      yPos = 22;
+      doc.setFontSize(18);
+      doc.setTextColor(6, 78, 59);
+      doc.setFont("helvetica", "bold");
+      doc.text("Appendix A: Detailed Context & Logs", 14, yPos);
       yPos += 15;
 
       const grouped = reportData.reduce((acc, report) => {
@@ -301,21 +332,21 @@ export default function Dashboard() {
         if (yPos > 270) { doc.addPage(); yPos = 20; }
 
         doc.text(`${category}:`, 14, yPos);
-        yPos += 10;
+        yPos += 8;
 
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(50);
 
         if (summaries.length === 0) {
-          doc.text("No summaries to display.", 14, yPos);
-          yPos += 10;
+          doc.text("No context logged.", 14, yPos);
+          yPos += 8;
         } else {
           summaries.forEach(summary => {
             const lines = doc.splitTextToSize(`• ${summary}`, 180);
-            if (yPos + (lines.length * 5) > 280) { doc.addPage(); yPos = 20; }
+            if (yPos + (lines.length * 4) > 280) { doc.addPage(); yPos = 20; }
             doc.text(lines, 14, yPos);
-            yPos += (lines.length * 5) + 4;
+            yPos += (lines.length * 4) + 3;
           });
         }
         yPos += 6;
@@ -380,17 +411,10 @@ export default function Dashboard() {
             <StatCards stats={stats} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            </div>
-
-            <ReportsTable reports={reports} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="col-span-1 lg:col-span-2">
-                <CategoryChart data={categoryData} />
-              </div>
-              <div className="col-span-1">
-                <SentimentChart data={sentimentData} />
-              </div>
+              <EffortByDayChart data={reports} />
+              <ResolutionPathChart data={reports} />
+              <EscalationDriversChart data={reports} />
+              <FrictionSignalsChart data={reports} />
             </div>
 
             <div className="grid grid-cols-1 gap-6">

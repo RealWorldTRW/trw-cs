@@ -30,6 +30,35 @@ export interface ConversationReport {
   tags: any | null;
   quick_insight: string | null;
   conversation_history: any | null;
+  conversation_created_at: string | null;
+  conversation_updated_at: string | null;
+  admin_assignee_id: string | null;
+  team_assignee_id: string | null;
+  is_open: boolean | null;
+  conversation_state: string | null;
+  priority: string | null;
+  waiting_since: string | null;
+  snoozed_until: string | null;
+  source_url: string | null;
+  source_author_id: string | null;
+  source_author_type: string | null;
+  contact_id: string | null;
+  contact_external_id: string | null;
+  language: string | null;
+  ai_title: string | null;
+  ai_agent_participated: boolean | null;
+  time_to_assignment: number | null;
+  time_to_admin_reply: number | null;
+  median_time_to_reply: number | null;
+  count_reopens: number | null;
+  count_assignments: number | null;
+  count_conversation_parts: number | null;
+  first_contact_reply_at: string | null;
+  first_admin_reply_at: string | null;
+  last_contact_reply_at: string | null;
+  last_admin_reply_at: string | null;
+  conversation_rating: any | null;
+  agent_name: string | null;
 }
 
 export interface Profile {
@@ -107,14 +136,14 @@ export const getConversationReportsByDate = async (startDate: string, endDate?: 
   let query = supabase
     .from('conversation_reports')
     .select('*')
-    .gte('created_at', startDate);
+    .gte('conversation_created_at', startDate);
 
   if (endDate) {
     // Add 23:59:59 to include the whole end day
-    query = query.lte('created_at', endDate + 'T23:59:59.999Z');
+    query = query.lte('conversation_created_at', endDate + 'T23:59:59.999Z');
   }
 
-  return await query.order('created_at', { ascending: false });
+  return await query.order('conversation_created_at', { ascending: false });
 };
 
 export const getReportsByCategory = async () => {
@@ -138,33 +167,32 @@ export const getReportsByCategory = async () => {
 export const getReportsStats = async () => {
   const { data, error } = await supabase
     .from('conversation_reports')
-    .select('category, created_at');
+    .select('conversation_created_at, count_conversation_parts, resolution_status')
+    .gte('conversation_created_at', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
 
   if (error || !data) {
     return { data: null, error };
   }
 
   const total = data.length;
-  const today = new Date().toISOString().split('T')[0];
 
-  const todayReports = data.filter((report: { created_at: string | null }) =>
-    report.created_at?.startsWith(today)
-  ).length;
+  let totalEffort = 0;
+  let escalatedTotal = 0;
 
-  const last7Days = new Date();
-  last7Days.setDate(last7Days.getDate() - 7);
+  data.forEach((r: any) => {
+    totalEffort += (r.count_conversation_parts || 0);
+    if (r.resolution_status === 'escalated_to_support') {
+      escalatedTotal++;
+    }
+  });
 
-  const weekReports = data.filter((report: { created_at: string | null }) => {
-    if (!report.created_at) return false;
-    return new Date(report.created_at) >= last7Days;
-  }).length;
+  const escalationRate = total > 0 ? Math.round((escalatedTotal / total) * 100) : 0;
 
   return {
     data: {
-      total,
-      today: todayReports,
-      week: weekReports,
-      categories: Array.from(new Set(data.map((r: { category: string }) => r.category))).length,
+      total,                  // Total Conversations (30d)
+      effort: totalEffort,    // Human Support Effort
+      escalations: escalationRate, // Escalation Rate %
     },
     error: null,
   };

@@ -2,42 +2,35 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquare, Calendar, ChartBar as BarChart3, Folder } from 'lucide-react';
+import { MessageSquare, AlertTriangle, Activity } from 'lucide-react';
 
 interface StatCardsProps {
   stats: {
     total: number;
-    today: number;
-    week: number;
-    categories: number;
+    effort: number;
+    escalations: number;
   } | null;
 }
 
 export default function StatCards({ stats }: StatCardsProps) {
   const cards = [
     {
-      title: 'Total Reports',
+      title: 'Total Volume (30d)',
       value: stats?.total?.toString() || '0',
       icon: MessageSquare,
       color: 'blue'
     },
     {
-      title: 'Today',
-      value: stats?.today?.toString() || '0',
-      icon: Calendar,
-      color: 'green'
-    },
-    {
-      title: 'This Week',
-      value: stats?.week?.toString() || '0',
-      icon: BarChart3,
+      title: 'Human Support Effort',
+      value: stats?.effort?.toString() || '0',
+      icon: Activity,
       color: 'amber'
     },
     {
-      title: 'Categories',
-      value: stats?.categories?.toString() || '0',
-      icon: Folder,
-      color: 'purple'
+      title: 'Escalation Rate',
+      value: `${stats?.escalations || 0}%`,
+      icon: AlertTriangle,
+      color: 'red'
     }
   ];
 
@@ -46,13 +39,14 @@ export default function StatCards({ stats }: StatCardsProps) {
       blue: 'bg-blue-500',
       amber: 'bg-amber-500',
       green: 'bg-green-500',
-      purple: 'bg-purple-500'
+      purple: 'bg-purple-500',
+      red: 'bg-red-500'
     };
     return colors[color as keyof typeof colors] || 'bg-gray-500';
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (
